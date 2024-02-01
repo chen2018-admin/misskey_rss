@@ -77,7 +77,6 @@ def add_news():
     """ SQLite db table population """
     import os
     import yaml
-    path = os.path.join("sources.yaml")
     datas = yaml.safe_load(open("sources.yaml", 'r', encoding="utf-8"))
 
     # Fetch and insert feeds for each URL in "sources.txt"
