@@ -1,0 +1,90 @@
+""" Fetch Module """
+import time
+import sqlite3
+import feedparser
+from dotenv import load_dotenv
+
+load_dotenv()
+
+def install():
+    """ Create SQLite DB if not exists """
+    print ('DB Setup ...')
+    db = sqlite3.connect('feed-bot.sqlite')
+    c = db.cursor()
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS "news" (
+            "id"    INTEGER NOT NULL UNIQUE,
+            "source"        TEXT NOT NULL DEFAULT 'feed',
+            "publishedAt"   INTEGER NOT NULL,
+            "link"  TEXT NOT NULL UNIQUE,
+            "title" TEXT NOT NULL,
+            "body"  TEXT,
+            "sentiment" DECIMAL(1,2),
+            "noteId"        TEXT,
+            "notedAt"       INTEGER,
+            "channelId"        TEXT,
+            PRIMARY KEY("id" AUTOINCREMENT)
+        );
+    ''')
+    db.commit()
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS "feeds" (
+            "id"    INTEGER NOT NULL UNIQUE,
+            "url"   TEXT NOT NULL UNIQUE,
+            "title" TEXT,
+            PRIMARY KEY("id" AUTOINCREMENT)
+        );
+    ''')
+
+def fetch_and_insert_feeds(url, channelId=None):
+    """ Core function """
+    data = feedparser.parse(url)
+    website = data.feed.get('title', None)
+
+    for entry in data.entries:
+        # Check if 'published_parsed' exists in the entry
+        if 'published_parsed' in entry:
+            published_at = int(time.mktime(entry.published_parsed))
+        elif 'updated_parsed' in entry:
+            published_at = int(time.mktime(entry.updated_parsed))
+        else:
+            # Use the current time as a default value if 'published_parsed' is not present
+            published_at = int(time.time())
+
+        link = entry.link
+        title = entry.title
+        body = entry.summary if hasattr(entry, 'summary') else ''
+
+        # Insert feed data into the "news" table
+        try:
+            db = sqlite3.connect('feed-bot.sqlite')
+            c = db.cursor()
+            c.execute('''
+                INSERT INTO news (source, publishedAt, link, title, body, channelId)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (website, published_at, link, title, body, channelId))
+            db.commit()
+        except sqlite3.IntegrityError:
+            pass
+        except sqlite3.OperationalError as e:
+            print(f"ERRORE: {e}")
+        finally:
+            db.close()
+
+def add_news():
+    """ SQLite db table population """
+    import os
+    import yaml
+    path = os.path.join("sources.yaml")
+    datas = yaml.safe_load(open("sources.yaml", 'r', encoding="utf-8"))
+
+    # Fetch and insert feeds for each URL in "sources.txt"
+    for data in datas:
+        url = data.get("url", None)
+        channelId = data.get("channelId", None)
+
+        if not url:
+            continue
+        fetch_and_insert_feeds(url, channelId)
