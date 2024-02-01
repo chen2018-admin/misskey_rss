@@ -5,4 +5,4 @@
 
 feed-bot.pid
 feed-bot.sqlite
-sources.yaml
+./sources.yaml
