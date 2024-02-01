@@ -28,7 +28,7 @@
 
 ### 用 RSS feed 填充机器人
 
-首先，将 RSS Feed 源 URLsources.yaml中。多个的话就写多个的
+首先，新建一个sources.yaml文件，将 RSS Feed 源放到其中中。多个的话就写多个的
 ```yaml
 - title: 别名
   url: 订阅的rss源地址
